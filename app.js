@@ -50,6 +50,8 @@
         lt.textContent = "点击获取精确位置";
         $("#locationRetry").hidden = true;
       }
+      // IP定位完成后，静默尝试GPS精确定位
+      tryGPS();
     };
 
     var script = document.createElement("script");
@@ -57,8 +59,21 @@
     script.onerror = function () {
       lt.textContent = "点击获取精确位置";
       script.remove();
+      tryGPS();
     };
     document.head.appendChild(script);
+  }
+
+  // GPS静默定位 - 用户授权过就直接拿到精确地址，没授权也不影响
+  function tryGPS() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        reverseGeocode(pos.coords.longitude, pos.coords.latitude);
+      },
+      function () { /* 静默失败不处理，保持IP定位结果 */ },
+      { enableHighAccuracy: false, timeout: 6000, maximumAge: 300000 }
+    );
   }
 
   // 页面加载自动IP定位
