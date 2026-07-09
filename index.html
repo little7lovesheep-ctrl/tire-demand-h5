@@ -133,8 +133,6 @@
           <button class="toggle-btn" type="button" id="useOtherBtn" aria-pressed="false">不在当前位置，换个地方</button>
         </div>
         <div class="location-other" id="locationOther" hidden>
-          <button type="button" class="map-pick-btn" id="openMapBtn">&#x1F4CD; 在地图上选择位置</button>
-          <div class="location-or">或</div>
           <label class="location-field">
             <span class="sr-only">服务区域</span>
             <input id="locationInput" type="text" placeholder="输入期望服务的具体区域，如广州市白云区">
@@ -153,18 +151,6 @@
   </main>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
-  <div class="modal-backdrop" id="mapModal" aria-hidden="true">
-    <section class="map-modal" role="dialog" aria-modal="true" aria-labelledby="mapTitle">
-      <div class="map-modal-header">
-        <h2 id="mapTitle">选择服务位置</h2>
-        <button type="button" class="map-close" id="closeMapBtn">&times;</button>
-      </div>
-      <div class="map-container" id="mapContainer"></div>
-      <div class="map-result" id="mapResult">点击地图选择位置</div>
-      <button type="button" class="map-confirm-btn" id="confirmMapBtn">确认该位置</button>
-    </section>
-  </div>
 
   <div class="modal-backdrop" id="successModal" aria-hidden="true">
     <section class="success-modal" role="dialog" aria-modal="true" aria-labelledby="successTitle">
