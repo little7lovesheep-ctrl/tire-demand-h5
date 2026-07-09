@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#3366ff">
+  <meta name="description" content="货车宝轮胎比价 - 多家门店报价你选最低">
+  <title>货车宝轮胎比价 - 免费获取报价</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="https://webapi.amap.com/maps?v=2.0&key=YOUR_AMAP_KEY&plugin=AMap.Geolocation,AMap.Geocoder"></script>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="simple-header">
+      <div class="brand">
+        <img class="brand-logo" src="./assets/hcb-logo.png" alt="货车宝">
+        <strong>货车宝</strong>
+      </div>
+      <span class="stock-tag">免费比价</span>
+    </header>
+
+    <section class="hero">
+      <div class="hero-visual">
+        <div class="tire-showcase" aria-hidden="true">
+          <img src="./assets/linglong-al601.png" alt="货车轮胎" class="tire-img tire-img-back">
+          <img src="./assets/linglong-al601.png" alt="" class="tire-img tire-img-front">
+        </div>
+        <div class="hero-badge">换胎 · 补胎</div>
+      </div>
+      <h1>轮胎要换？要补？<br>多家门店帮你报价</h1>
+      <p class="hero-sub">你只管挑最低价，不满意不花一分钱</p>
+      <div class="hero-steps">
+        <div class="step-item"><span>1</span>填需求</div>
+        <div class="step-arrow">→</div>
+        <div class="step-item"><span>2</span>门店报价</div>
+        <div class="step-arrow">→</div>
+        <div class="step-item"><span>3</span>你来选</div>
+      </div>
+      <div class="social-proof">
+        <span class="proof-number" id="proofCount">8,326</span>
+        <span class="proof-text">位司机已通过平台找到低价门店</span>
+      </div>
+    </section>
+
+    <form class="booking-form" id="intentForm" novalidate>
+      <section class="form-section">
+        <div class="section-title">
+          <span>1</span>
+          <h2>您需要什么服务？</h2>
+        </div>
+        <div class="option-grid service-options" role="radiogroup" aria-label="服务类型">
+          <button class="option-button service-btn active" type="button" data-service="换胎" aria-pressed="true">
+            <i class="service-icon">&#x1F504;</i>
+            <strong>换胎</strong>
+            <small>轮胎更换</small>
+          </button>
+          <button class="option-button service-btn" type="button" data-service="补胎" aria-pressed="false">
+            <i class="service-icon">&#x1FA79;</i>
+            <strong>补胎</strong>
+            <small>轮胎修补</small>
+          </button>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <div class="section-title">
+          <span>2</span>
+          <h2>您的联系电话</h2>
+        </div>
+        <label class="phone-field">
+          <span class="sr-only">联系电话</span>
+          <input id="driverPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="11" placeholder="请输入11位手机号">
+        </label>
+        <p class="field-hint">仅用于门店联系您，不会外泄</p>
+      </section>
+
+      <section class="form-section">
+        <div class="section-title">
+          <span>3</span>
+          <h2>预计什么时候需要？</h2>
+        </div>
+        <div class="option-grid time-options time-3col" role="radiogroup" aria-label="预计服务时间">
+          <button class="option-button active" type="button" data-time="今天" aria-pressed="true">今天</button>
+          <button class="option-button" type="button" data-time="明天" aria-pressed="false">明天</button>
+          <button class="option-button" type="button" data-time="后天" aria-pressed="false">后天</button>
+          <button class="option-button" type="button" data-time="1周内" aria-pressed="false">1周内</button>
+          <button class="option-button" type="button" data-time="月底前" aria-pressed="false">月底前</button>
+          <button class="option-button" type="button" data-time="先了解一下" aria-pressed="false">先了解一下</button>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <div class="section-title">
+          <span>4</span>
+          <h2>您在哪里需要服务？</h2>
+        </div>
+        <div class="location-detect" id="locationDetect">
+          <div class="location-current" id="locationCurrent">
+            <span class="location-pin">&#x1F4CD;</span>
+            <span class="location-text" id="locationText">正在定位...</span>
+            <button type="button" class="location-retry" id="locationRetry" hidden>重新定位</button>
+          </div>
+        </div>
+        <label class="location-field">
+          <span class="sr-only">服务城市或区域</span>
+          <input id="locationInput" type="text" placeholder="可修改为其他城市，多个城市用逗号隔开">
+        </label>
+        <button type="button" class="map-pick-btn" id="openMapBtn">&#x1F4CD; 在地图上选择位置</button>
+        <p class="field-hint">默认定位当前城市，也可在地图上精确选点</p>
+      </section>
+
+      <div class="submit-area">
+        <button class="submit-button" id="submitButton" type="submit">免费获取报价</button>
+        <p>提交后，附近门店将在24小时内主动联系您报价</p>
+      </div>
+    </form>
+
+    <footer class="privacy-note">您的信息仅用于本次服务对接，货车宝严格保护用户隐私</footer>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="modal-backdrop" id="mapModal" aria-hidden="true">
+    <section class="map-modal" role="dialog" aria-modal="true" aria-labelledby="mapTitle">
+      <div class="map-modal-header">
+        <h2 id="mapTitle">选择服务位置</h2>
+        <button type="button" class="map-close" id="closeMapBtn">&times;</button>
+      </div>
+      <div class="map-container" id="mapContainer"></div>
+      <div class="map-result" id="mapResult">点击地图选择位置</div>
+      <button type="button" class="map-confirm-btn" id="confirmMapBtn">确认该位置</button>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="successModal" aria-hidden="true">
+    <section class="success-modal" role="dialog" aria-modal="true" aria-labelledby="successTitle">
+      <div class="success-icon">&#x2705;</div>
+      <h2 id="successTitle">报价请求已提交</h2>
+      <p class="success-desc">附近门店正在为您准备报价，请保持电话畅通</p>
+      <div class="booking-result" id="bookingResult"></div>
+      <button type="button" id="closeModal">我知道了</button>
+    </section>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
