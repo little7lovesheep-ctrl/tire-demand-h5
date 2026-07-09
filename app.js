@@ -276,16 +276,44 @@ document.querySelector("#intentForm").addEventListener("submit", (event) => {
     }
   }
 
-  const details = [
-    ["服务类型", state.service],
-    ["联系电话", phone],
-    ["预计时间", state.time],
-    ["服务区域", location],
-  ];
+  const submitBtn = document.querySelector("#submitButton");
+  submitBtn.disabled = true;
+  submitBtn.textContent = "提交中...";
 
-  document.querySelector("#bookingResult").innerHTML = details
-    .map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`)
-    .join("");
+  const payload = {
+    service: state.service,
+    phone: phone,
+    time: state.time,
+    location: location,
+  };
 
-  openModal();
+  fetch("/api/submit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.success) {
+        const details = [
+          ["服务类型", state.service],
+          ["联系电话", phone],
+          ["预计时间", state.time],
+          ["服务区域", location],
+        ];
+        document.querySelector("#bookingResult").innerHTML = details
+          .map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`)
+          .join("");
+        openModal();
+      } else {
+        showToast(data.error || "提交失败，请重试");
+      }
+    })
+    .catch(() => {
+      showToast("网络异常，请重试");
+    })
+    .finally(() => {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "免费获取报价";
+    });
 });
