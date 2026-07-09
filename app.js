@@ -1,3 +1,5 @@
+const BAIDU_AK = "tipOj2H6KHtBlXMR6wHxpN1jBlmIPkD0";
+
 const state = {
   service: "换胎",
   time: "今天",
@@ -5,12 +7,6 @@ const state = {
   mapAddress: "",
   useCurrent: true,
   bMapReady: false,
-};
-
-// Baidu Map async callback
-window.onBMapLoaded = function () {
-  state.bMapReady = true;
-  detectLocation();
 };
 
 function selectExclusive(buttons, selectedButton) {
@@ -60,7 +56,7 @@ useOtherBtn.addEventListener("click", () => {
   locationOther.hidden = false;
 });
 
-// Geolocation via Baidu Map
+// Geolocation - 纯浏览器原生API，不依赖第三方JS
 const locationText = document.querySelector("#locationText");
 const locationRetry = document.querySelector("#locationRetry");
 const locationInput = document.querySelector("#locationInput");
@@ -69,61 +65,51 @@ function detectLocation() {
   locationText.textContent = "正在定位...";
   locationRetry.hidden = true;
 
-  if (!state.bMapReady) {
-    fallbackBrowserGeo();
-    return;
-  }
-
-  const MapLib = typeof BMapGL !== "undefined" ? BMapGL : BMap;
-  const geolocation = new MapLib.Geolocation();
-
-  geolocation.getCurrentPosition(function (r) {
-    if (this.getStatus() === 0) {
-      const point = r.point;
-      reverseGeocodeBaidu(point.lng, point.lat);
-    } else {
-      fallbackBrowserGeo();
-    }
-  });
-}
-
-function fallbackBrowserGeo() {
   if (!navigator.geolocation) {
-    locationFailed("定位失败，请手动填写或在地图上选择");
+    locationFailed("您的浏览器不支持定位，请手动选择");
     return;
   }
 
   navigator.geolocation.getCurrentPosition(
     (position) => {
-      reverseGeocodeBaidu(position.coords.longitude, position.coords.latitude);
+      const lng = position.coords.longitude;
+      const lat = position.coords.latitude;
+      reverseGeocodeViaAPI(lng, lat);
     },
     () => {
-      locationFailed("定位失败，请手动填写或在地图上选择");
+      locationFailed("定位失败，请选择"不在当前位置"手动填写");
     },
     { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
   );
 }
 
-function reverseGeocodeBaidu(lng, lat) {
-  const MapLib = typeof BMapGL !== "undefined" ? BMapGL : BMap;
-  const geocoder = new MapLib.Geocoder();
-  const point = new MapLib.Point(lng, lat);
+function reverseGeocodeViaAPI(lng, lat) {
+  const url = `https://api.map.baidu.com/reverse_geocoding/v3/?ak=${BAIDU_AK}&output=json&coordtype=wgs84ll&location=${lat},${lng}&callback=handleGeoResult`;
 
-  geocoder.getLocation(point, (result) => {
-    if (result) {
-      const city = result.addressComponents.city || "";
-      const district = result.addressComponents.district || "";
-      const display = district ? `${city}${district}` : city;
-      if (display) {
-        locationSuccess(display);
-      } else {
-        locationFailed("无法识别当前城市，请手动填写");
-      }
+  const script = document.createElement("script");
+  script.src = url;
+  script.onerror = () => {
+    locationFailed("地址解析失败，请手动填写");
+    script.remove();
+  };
+  document.head.appendChild(script);
+}
+
+window.handleGeoResult = function (data) {
+  if (data && data.status === 0 && data.result) {
+    const comp = data.result.addressComponent;
+    const city = comp.city || comp.province || "";
+    const district = comp.district || "";
+    const display = district ? `${city}${district}` : city;
+    if (display) {
+      locationSuccess(display);
     } else {
       locationFailed("无法识别当前城市，请手动填写");
     }
-  });
-}
+  } else {
+    locationFailed("地址解析失败，请手动填写");
+  }
+};
 
 function locationSuccess(display) {
   state.geoCity = display;
@@ -135,69 +121,82 @@ function locationFailed(msg) {
   state.geoCity = "";
   locationText.textContent = msg;
   locationRetry.hidden = false;
-  // 定位失败时自动展开手动输入
-  useOtherBtn.click();
 }
 
 locationRetry.addEventListener("click", detectLocation);
+detectLocation();
 
-// 如果百度地图5秒内没加载好，走浏览器原生定位
-setTimeout(() => {
-  if (!state.bMapReady && !state.geoCity) {
-    fallbackBrowserGeo();
-  }
-}, 5000);
-
-// Map picker (Baidu Map)
+// Map picker - 动态加载百度地图JS，仅在用户点击时加载
 const mapModal = document.querySelector("#mapModal");
 const mapContainer = document.querySelector("#mapContainer");
 const mapResult = document.querySelector("#mapResult");
 let map = null;
 let mapMarker = null;
 
+function loadBaiduMap(callback) {
+  if (state.bMapReady) {
+    callback();
+    return;
+  }
+  mapResult.textContent = "地图加载中...";
+  window.initBMap = function () {
+    state.bMapReady = true;
+    callback();
+  };
+  const script = document.createElement("script");
+  script.src = `https://api.map.baidu.com/api?v=3.0&ak=${BAIDU_AK}&callback=initBMap`;
+  script.onerror = () => {
+    mapResult.textContent = "地图加载失败，请手动输入地址";
+  };
+  document.head.appendChild(script);
+}
+
 document.querySelector("#openMapBtn").addEventListener("click", () => {
   mapModal.classList.add("open");
   mapModal.setAttribute("aria-hidden", "false");
   document.body.style.overflow = "hidden";
 
-  if (!map && state.bMapReady) {
-    const MapLib = typeof BMapGL !== "undefined" ? BMapGL : BMap;
-    map = new MapLib.Map("mapContainer");
-    map.centerAndZoom(new MapLib.Point(116.404, 39.915), 13);
-    map.enableScrollWheelZoom(true);
-
-    if (state.geoCity) {
-      const geocoder = new MapLib.Geocoder();
-      geocoder.getPoint(state.geoCity, (point) => {
-        if (point) {
-          map.centerAndZoom(point, 13);
-        }
-      });
-    }
-
-    map.addEventListener("click", (e) => {
-      const point = e.latlng || e.point;
-      if (!point) return;
-
-      if (mapMarker) {
-        mapMarker.setPosition(point);
-      } else {
-        mapMarker = new MapLib.Marker(point);
-        map.addOverlay(mapMarker);
-      }
-
-      const geocoder = new MapLib.Geocoder();
-      geocoder.getLocation(point, (result) => {
-        if (result) {
-          state.mapAddress = result.address;
-          mapResult.textContent = result.address;
-        }
-      });
-    });
-  } else if (!map && !state.bMapReady) {
-    mapResult.textContent = "地图服务暂不可用，请手动输入地址";
+  if (!map) {
+    loadBaiduMap(initMap);
   }
 });
+
+function initMap() {
+  const MapLib = typeof BMapGL !== "undefined" ? BMapGL : BMap;
+  map = new MapLib.Map("mapContainer");
+  map.centerAndZoom(new MapLib.Point(116.404, 39.915), 13);
+  map.enableScrollWheelZoom(true);
+  mapResult.textContent = "点击地图选择位置";
+
+  if (state.geoCity) {
+    const geocoder = new MapLib.Geocoder();
+    geocoder.getPoint(state.geoCity, (point) => {
+      if (point) {
+        map.centerAndZoom(point, 13);
+      }
+    });
+  }
+
+  map.addEventListener("click", (e) => {
+    const point = e.latlng || e.point;
+    if (!point) return;
+
+    if (mapMarker) {
+      mapMarker.setPosition(point);
+    } else {
+      mapMarker = new MapLib.Marker(point);
+      map.addOverlay(mapMarker);
+    }
+
+    const geocoder = new MapLib.Geocoder();
+    geocoder.getLocation(point, (result) => {
+      if (result) {
+        state.mapAddress = result.address;
+        mapResult.textContent = result.address;
+      }
+    });
+  });
+}
 
 document.querySelector("#closeMapBtn").addEventListener("click", closeMap);
 mapModal.addEventListener("click", (e) => {
