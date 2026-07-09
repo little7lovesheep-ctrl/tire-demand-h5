@@ -101,12 +101,19 @@
             <button type="button" class="location-retry" id="locationRetry" hidden>重新定位</button>
           </div>
         </div>
-        <label class="location-field">
-          <span class="sr-only">服务城市或区域</span>
-          <input id="locationInput" type="text" placeholder="可输入期望服务的具体区域，如广州市白云区">
-        </label>
-        <button type="button" class="map-pick-btn" id="openMapBtn">&#x1F4CD; 在地图上选择位置</button>
-        <p class="field-hint">默认定位当前城市，也可在地图上精确选点</p>
+        <div class="location-toggle" role="radiogroup" aria-label="服务位置选择">
+          <button class="toggle-btn active" type="button" id="useCurrentBtn" aria-pressed="true">就在当前位置附近</button>
+          <button class="toggle-btn" type="button" id="useOtherBtn" aria-pressed="false">不在当前位置，换个地方</button>
+        </div>
+        <div class="location-other" id="locationOther" hidden>
+          <button type="button" class="map-pick-btn" id="openMapBtn">&#x1F4CD; 在地图上选择位置</button>
+          <div class="location-or">或</div>
+          <label class="location-field">
+            <span class="sr-only">服务区域</span>
+            <input id="locationInput" type="text" placeholder="输入期望服务的具体区域，如广州市白云区">
+          </label>
+        </div>
+        <p class="field-hint">定位仅用于匹配附近门店</p>
       </section>
 
       <div class="submit-area">

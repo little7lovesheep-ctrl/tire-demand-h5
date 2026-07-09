@@ -400,6 +400,61 @@ button {
   box-shadow: 0 0 0 4px var(--brand-blue-soft);
 }
 
+.location-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.toggle-btn {
+  padding: 12px 8px;
+  border: 1px solid #ddd7c9;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.toggle-btn.active {
+  border: 2px solid var(--brand-blue);
+  background: var(--brand-blue-soft);
+  color: var(--brand-blue);
+}
+
+.location-other {
+  margin-top: 14px;
+}
+
+.location-or {
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  margin: 12px 0;
+  position: relative;
+}
+
+.location-or::before,
+.location-or::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 38%;
+  height: 1px;
+  background: var(--line);
+}
+
+.location-or::before {
+  left: 0;
+}
+
+.location-or::after {
+  right: 0;
+}
+
 .map-pick-btn {
   display: flex;
   align-items: center;

@@ -3,6 +3,7 @@ const state = {
   time: "今天",
   geoCity: "",
   mapAddress: "",
+  useCurrent: true,
 };
 
 function selectExclusive(buttons, selectedButton) {
@@ -27,6 +28,29 @@ timeButtons.forEach((button) => {
     selectExclusive(timeButtons, button);
     state.time = button.dataset.time;
   });
+});
+
+// Location toggle
+const useCurrentBtn = document.querySelector("#useCurrentBtn");
+const useOtherBtn = document.querySelector("#useOtherBtn");
+const locationOther = document.querySelector("#locationOther");
+
+useCurrentBtn.addEventListener("click", () => {
+  state.useCurrent = true;
+  useCurrentBtn.classList.add("active");
+  useCurrentBtn.setAttribute("aria-pressed", "true");
+  useOtherBtn.classList.remove("active");
+  useOtherBtn.setAttribute("aria-pressed", "false");
+  locationOther.hidden = true;
+});
+
+useOtherBtn.addEventListener("click", () => {
+  state.useCurrent = false;
+  useOtherBtn.classList.add("active");
+  useOtherBtn.setAttribute("aria-pressed", "true");
+  useCurrentBtn.classList.remove("active");
+  useCurrentBtn.setAttribute("aria-pressed", "false");
+  locationOther.hidden = false;
 });
 
 // Geolocation via Baidu Map
@@ -98,15 +122,14 @@ function locationSuccess(display) {
   state.geoCity = display;
   locationText.textContent = display;
   locationRetry.hidden = false;
-  if (!locationInput.value) {
-    locationInput.value = display;
-  }
 }
 
 function locationFailed(msg) {
   state.geoCity = "";
   locationText.textContent = msg;
   locationRetry.hidden = false;
+  // 定位失败时自动展开手动输入
+  useOtherBtn.click();
 }
 
 locationRetry.addEventListener("click", detectLocation);
@@ -219,7 +242,6 @@ document.querySelector("#intentForm").addEventListener("submit", (event) => {
 
   const phoneInput = document.querySelector("#driverPhone");
   const phone = phoneInput.value.trim();
-  const location = locationInput.value.trim();
 
   if (!/^1\d{10}$/.test(phone)) {
     showToast("请输入正确的11位手机号");
@@ -227,10 +249,20 @@ document.querySelector("#intentForm").addEventListener("submit", (event) => {
     return;
   }
 
-  if (!location) {
-    showToast("请填写服务城市或区域");
-    locationInput.focus();
-    return;
+  let location = "";
+  if (state.useCurrent) {
+    location = state.geoCity || "";
+    if (!location) {
+      showToast("定位未成功，请选择"不在当前位置"手动填写");
+      return;
+    }
+  } else {
+    location = locationInput.value.trim();
+    if (!location) {
+      showToast("请填写期望服务的区域或在地图上选择");
+      locationInput.focus();
+      return;
+    }
   }
 
   const details = [
