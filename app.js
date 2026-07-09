@@ -24,7 +24,47 @@
     setTimeout(function () { t.className = "toast"; }, 2200);
   }
 
-  // 定位相关
+  // IP定位 - 页面加载自动执行，无需用户授权
+  function detectByIP() {
+    var lt = $("#locationText");
+    lt.textContent = "正在获取位置...";
+    var cbName = "ipCallback_" + Date.now();
+    var url = "https://api.map.baidu.com/location/ip?ak=" + BAIDU_AK + "&coor=bd09ll&callback=" + cbName;
+
+    window[cbName] = function (data) {
+      delete window[cbName];
+      if (data && data.status === 0 && data.content) {
+        var addr = data.content.address || "";
+        var detail = data.content.address_detail || {};
+        var display = (detail.city || "") + (detail.district || "");
+        if (!display) display = addr;
+        if (display) {
+          state.geoCity = display;
+          lt.textContent = display;
+          $("#locationRetry").hidden = false;
+        } else {
+          lt.textContent = "点击获取精确位置";
+          $("#locationRetry").hidden = true;
+        }
+      } else {
+        lt.textContent = "点击获取精确位置";
+        $("#locationRetry").hidden = true;
+      }
+    };
+
+    var script = document.createElement("script");
+    script.src = url;
+    script.onerror = function () {
+      lt.textContent = "点击获取精确位置";
+      script.remove();
+    };
+    document.head.appendChild(script);
+  }
+
+  // 页面加载自动IP定位
+  detectByIP();
+
+  // GPS精确定位 - 用户点击时触发
   function detectLocation() {
     var lt = $("#locationText");
     var retry = $("#locationRetry");
