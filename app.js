@@ -1,7 +1,8 @@
 (function () {
   "use strict";
 
-  var state = { service: "换胎", time: "今天", geoCity: "", useCurrent: true };
+  var BAIDU_AK = "tipOj2H6KHtBlXMR6wHxpN1jBlmIPkD0";
+  var state = { service: "换胎", time: "今天", geoCity: "", mapAddress: "", useCurrent: true, bMapReady: false };
 
   function $(sel) { return document.querySelector(sel); }
   function $$(sel) { return document.querySelectorAll(sel); }
@@ -10,7 +11,7 @@
     var btns = $$(group);
     for (var i = 0; i < btns.length; i++) {
       var isActive = btns[i] === selected;
-      btns[i].className = btns[i].className.replace(" active", "");
+      btns[i].className = btns[i].className.replace(/ ?active/g, "");
       if (isActive) btns[i].className += " active";
       btns[i].setAttribute("aria-pressed", isActive ? "true" : "false");
     }
@@ -23,25 +24,157 @@
     setTimeout(function () { t.className = "toast"; }, 2200);
   }
 
+  // 定位相关
+  function detectLocation() {
+    var lt = $("#locationText");
+    var retry = $("#locationRetry");
+    lt.textContent = "正在定位...";
+    retry.hidden = true;
+
+    if (!navigator.geolocation) {
+      lt.textContent = "浏览器不支持定位，请手动选择";
+      retry.hidden = false;
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        reverseGeocode(pos.coords.longitude, pos.coords.latitude);
+      },
+      function () {
+        lt.textContent = "定位失败，请点击重试或手动填写";
+        retry.hidden = false;
+      },
+      { enableHighAccuracy: false, timeout: 6000, maximumAge: 300000 }
+    );
+  }
+
+  function reverseGeocode(lng, lat) {
+    var lt = $("#locationText");
+    var retry = $("#locationRetry");
+    var cbName = "geoCallback_" + Date.now();
+    var url = "https://api.map.baidu.com/reverse_geocoding/v3/?ak=" + BAIDU_AK
+      + "&output=json&coordtype=wgs84ll&location=" + lat + "," + lng + "&callback=" + cbName;
+
+    window[cbName] = function (data) {
+      delete window[cbName];
+      if (data && data.status === 0 && data.result) {
+        var comp = data.result.addressComponent;
+        var city = comp.city || comp.province || "";
+        var district = comp.district || "";
+        var display = district ? city + district : city;
+        if (display) {
+          state.geoCity = display;
+          lt.textContent = display;
+          retry.hidden = false;
+        } else {
+          lt.textContent = "无法识别位置，请手动填写";
+          retry.hidden = false;
+        }
+      } else {
+        lt.textContent = "定位服务暂不可用，请手动填写";
+        retry.hidden = false;
+      }
+    };
+
+    var script = document.createElement("script");
+    script.src = url;
+    script.onerror = function () {
+      lt.textContent = "地址解析失败，请手动填写";
+      retry.hidden = false;
+      script.remove();
+    };
+    document.head.appendChild(script);
+
+    setTimeout(function () {
+      if (!state.geoCity) {
+        lt.textContent = "定位超时，请手动填写";
+        retry.hidden = false;
+      }
+    }, 8000);
+  }
+
+  // 地图相关
+  var map = null;
+  var mapMarker = null;
+
+  function loadBaiduMap(cb) {
+    if (state.bMapReady) { cb(); return; }
+    $("#mapResult").textContent = "地图加载中...";
+    window.initBMap = function () {
+      state.bMapReady = true;
+      cb();
+    };
+    var s = document.createElement("script");
+    s.src = "https://api.map.baidu.com/api?v=3.0&ak=" + BAIDU_AK + "&callback=initBMap";
+    s.onerror = function () { $("#mapResult").textContent = "地图加载失败，请手动输入"; };
+    document.head.appendChild(s);
+  }
+
+  function initMap() {
+    try {
+      var Lib = (typeof BMapGL !== "undefined") ? BMapGL : BMap;
+      map = new Lib.Map("mapContainer");
+      map.centerAndZoom(new Lib.Point(116.404, 39.915), 13);
+      map.enableScrollWheelZoom(true);
+      $("#mapResult").textContent = "点击地图选择位置";
+
+      if (state.geoCity) {
+        var gc = new Lib.Geocoder();
+        gc.getPoint(state.geoCity, function (pt) {
+          if (pt) map.centerAndZoom(pt, 13);
+        });
+      }
+
+      map.addEventListener("click", function (e) {
+        var pt = e.latlng || e.point;
+        if (!pt) return;
+        if (mapMarker) { mapMarker.setPosition(pt); }
+        else { mapMarker = new Lib.Marker(pt); map.addOverlay(mapMarker); }
+
+        var gc2 = new Lib.Geocoder();
+        gc2.getLocation(pt, function (r) {
+          if (r) {
+            state.mapAddress = r.address;
+            $("#mapResult").textContent = r.address;
+          }
+        });
+      });
+    } catch (ex) {
+      $("#mapResult").textContent = "地图初始化失败，请手动输入";
+    }
+  }
+
+  function openMap() {
+    $("#mapModal").className = "modal-backdrop open";
+    $("#mapModal").setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+    if (!map) loadBaiduMap(initMap);
+  }
+
+  function closeMap() {
+    $("#mapModal").className = "modal-backdrop";
+    $("#mapModal").setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+  }
+
+  // 事件委托
   document.addEventListener("click", function (e) {
-    var target = e.target.closest ? e.target.closest("button, [data-service], [data-time]") : e.target;
+    var target = e.target.closest ? e.target.closest("button, [data-service], [data-time], #locationCurrent, #locationRetry") : e.target;
     if (!target) return;
 
-    // 服务类型
     if (target.hasAttribute("data-service")) {
       state.service = target.getAttribute("data-service");
       updateActive("[data-service]", target);
       return;
     }
 
-    // 时间选择
     if (target.hasAttribute("data-time")) {
       state.time = target.getAttribute("data-time");
       updateActive("[data-time]", target);
       return;
     }
 
-    // 当前位置按钮
     if (target.id === "useCurrentBtn") {
       state.useCurrent = true;
       $("#useCurrentBtn").className = "toggle-btn active";
@@ -52,7 +185,6 @@
       return;
     }
 
-    // 其他位置按钮
     if (target.id === "useOtherBtn") {
       state.useCurrent = false;
       $("#useOtherBtn").className = "toggle-btn active";
@@ -63,30 +195,46 @@
       return;
     }
 
-    // 定位区域点击
-    if (target.id === "locationCurrent" || target.closest && target.closest("#locationCurrent")) {
-      if (state.geoCity) return;
-      var lt = $("#locationText");
-      lt.textContent = "正在定位...";
-      if (!navigator.geolocation) {
-        lt.textContent = "浏览器不支持定位，请手动选择";
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        function (pos) {
-          state.geoCity = pos.coords.latitude.toFixed(2) + "," + pos.coords.longitude.toFixed(2);
-          lt.textContent = "定位成功";
-        },
-        function () {
-          lt.textContent = "定位失败，请手动填写";
-        },
-        { enableHighAccuracy: false, timeout: 6000, maximumAge: 300000 }
-      );
+    if (target.id === "locationCurrent" || (target.closest && target.closest("#locationCurrent"))) {
+      if (!state.geoCity) detectLocation();
       return;
     }
 
-    // 关闭成功弹窗
+    if (target.id === "locationRetry") {
+      state.geoCity = "";
+      detectLocation();
+      return;
+    }
+
+    if (target.id === "openMapBtn") {
+      openMap();
+      return;
+    }
+
+    if (target.id === "closeMapBtn") {
+      closeMap();
+      return;
+    }
+
+    if (target.id === "confirmMapBtn") {
+      if (state.mapAddress) $("#locationInput").value = state.mapAddress;
+      closeMap();
+      return;
+    }
+
     if (target.id === "closeModal") {
+      $("#successModal").className = "modal-backdrop";
+      $("#successModal").setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+      return;
+    }
+
+    if (target === $("#mapModal")) {
+      closeMap();
+      return;
+    }
+
+    if (target === $("#successModal")) {
       $("#successModal").className = "modal-backdrop";
       $("#successModal").setAttribute("aria-hidden", "true");
       document.body.style.overflow = "";
@@ -111,7 +259,7 @@
       if (state.useCurrent) {
         location = state.geoCity;
         if (!location) {
-          showToast("请先点击定位或选择其他位置手动填写");
+          showToast("请先点击定位获取位置或选择手动填写");
           return;
         }
       } else {
@@ -127,17 +275,10 @@
       btn.disabled = true;
       btn.textContent = "提交中...";
 
-      var payload = JSON.stringify({
-        service: state.service,
-        phone: phone,
-        time: state.time,
-        location: location
-      });
-
       fetch("/api/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: payload
+        body: JSON.stringify({ service: state.service, phone: phone, time: state.time, location: location })
       })
         .then(function (r) { return r.json(); })
         .then(function (data) {
