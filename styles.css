@@ -647,6 +647,7 @@ button {
   align-items: center;
   justify-content: center;
   visibility: hidden;
+  pointer-events: none;
   padding: 20px;
   background: rgba(0, 0, 0, .62);
   opacity: 0;
@@ -655,6 +656,7 @@ button {
 
 .modal-backdrop.open {
   visibility: visible;
+  pointer-events: auto;
   opacity: 1;
 }
 
