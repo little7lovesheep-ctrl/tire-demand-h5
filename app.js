@@ -4,6 +4,13 @@ const state = {
   geoCity: "",
   mapAddress: "",
   useCurrent: true,
+  bMapReady: false,
+};
+
+// Baidu Map async callback
+window.onBMapLoaded = function () {
+  state.bMapReady = true;
+  detectLocation();
 };
 
 function selectExclusive(buttons, selectedButton) {
@@ -62,7 +69,7 @@ function detectLocation() {
   locationText.textContent = "正在定位...";
   locationRetry.hidden = true;
 
-  if (typeof BMap === "undefined" && typeof BMapGL === "undefined") {
+  if (!state.bMapReady) {
     fallbackBrowserGeo();
     return;
   }
@@ -133,7 +140,13 @@ function locationFailed(msg) {
 }
 
 locationRetry.addEventListener("click", detectLocation);
-detectLocation();
+
+// 如果百度地图5秒内没加载好，走浏览器原生定位
+setTimeout(() => {
+  if (!state.bMapReady && !state.geoCity) {
+    fallbackBrowserGeo();
+  }
+}, 5000);
 
 // Map picker (Baidu Map)
 const mapModal = document.querySelector("#mapModal");
@@ -147,9 +160,8 @@ document.querySelector("#openMapBtn").addEventListener("click", () => {
   mapModal.setAttribute("aria-hidden", "false");
   document.body.style.overflow = "hidden";
 
-  const MapLib = typeof BMapGL !== "undefined" ? BMapGL : (typeof BMap !== "undefined" ? BMap : null);
-
-  if (!map && MapLib) {
+  if (!map && state.bMapReady) {
+    const MapLib = typeof BMapGL !== "undefined" ? BMapGL : BMap;
     map = new MapLib.Map("mapContainer");
     map.centerAndZoom(new MapLib.Point(116.404, 39.915), 13);
     map.enableScrollWheelZoom(true);
@@ -182,7 +194,7 @@ document.querySelector("#openMapBtn").addEventListener("click", () => {
         }
       });
     });
-  } else if (!MapLib) {
+  } else if (!map && !state.bMapReady) {
     mapResult.textContent = "地图服务暂不可用，请手动输入地址";
   }
 });
