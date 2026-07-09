@@ -199,6 +199,7 @@ button {
 
 .brand-scroll-section {
   margin-top: 16px;
+  pointer-events: none;
 }
 
 .brand-scroll-title {
